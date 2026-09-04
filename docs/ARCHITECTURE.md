@@ -1,243 +1,595 @@
-# New Resume Builder AI — Architecture Baseline
+# Resumaire — Architecture Baseline
 
-Status: DRAFT — to be refined by ARCH-001.
+Status: TECHNOLOGY STACK LOCKED — service/API details still refined through ARCH-001.
 
-## Architecture Direction
-Start with a modular monolith backend rather than microservices. The project is new and there is no demonstrated scale or team boundary that justifies distributed-service operational complexity.
+Brand: **Resumaire — An EpitomeHub® Product**
+
+## Final Technology Direction
+
+### Backend
+- Java 21 LTS (Eclipse Temurin; development machine currently reports 21.0.6)
+- Spring Boot
+- Spring Security
+- Spring Data JPA / Hibernate
+- Spring Cloud Gateway
+- Maven
+- Jakarta Validation
+- Spring Boot Actuator
+
+Pin exact framework/library patch versions in dependency management and upgrade deliberately through reviewed PRs rather than floating versions.
+
+### Database
+- PostgreSQL
+- Flyway for versioned schema migrations
+- One PostgreSQL cluster is acceptable initially, but each service must own its schema/data boundary. No service may directly manipulate another service's tables.
+
+### Web Frontend
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+- Responsive desktop/tablet/mobile web experience
+
+### Mobile
+- Flutter
+- Android
+- iOS
+- Same versioned backend contracts as the web application
+
+### Document Processing
+- docx4j as the primary DOCX/OOXML fidelity engine, subject to a fidelity spike against representative resumes
+- Apache POI only for operations where it is demonstrably sufficient
+- Apache PDFBox for PDF text/metadata/layout-oriented parsing where appropriate
+- LibreOffice headless, isolated in a controlled conversion worker/container, for DOCX-to-PDF rendering unless the fidelity spike selects a better deterministic renderer
+
+### Storage
+- Private S3-compatible object storage
+- MinIO for local/dev
+- Production may use Amazon S3 or another compatible private object store
+- Source resumes, derived versions and exports are private by default
+
+### AI
+- Provider abstraction; business code must not depend directly on one model vendor
+- Structured JSON/schema-constrained responses where supported
+- Deterministic post-validation of AI outputs
+- AI powers field-level suggestions, tailoring, ATS qualitative guidance, cover letters, interview questions and mock-interview evaluation
+- AI never bypasses authorization or silently fabricates professional experience
+
+### Infrastructure
+- Docker for all backend services and document workers
+- Docker Compose for local integration development
+- GitHub + pull-request workflow
+- CI/CD with build/test/security gates
+- Kubernetes is not required for MVP; adopt only when deployment/scale/operations justify it
+
+---
+
+# Service Architecture
+
+Use a small, explicit microservice architecture. Do not create a service for every screen or entity.
 
 ```text
-Responsive Web Client
-       |
-       | HTTPS
-       v
-API / Modular Backend Application
-       |
-       +-- Identity & Access
-       +-- Requirements Intake
-       +-- Document Upload
-       +-- Resume Parsing
-       +-- Resume Structure Detection
-       +-- Project Selection
-       +-- AI Tailoring
-       +-- Change Review / Versioning
-       +-- DOCX Editing
-       +-- PDF Rendering
-       +-- ATS Analysis
-       |
-       +------ Relational Database
-       |
-       +------ Private Object Storage
-       |
-       +------ AI Provider Adapter
+                    Web — Next.js / React
+                           |
+                    Flutter Android/iOS
+                           |
+                           v
+                 Spring Cloud API Gateway
+                           |
+          +----------------+------------------+
+          |                |                  |
+          v                v                  v
+  Identity Service   Resume Service    AI Career Service
+          |                |                  |
+          |                |                  +-- ATS analysis
+          |                |                  +-- field AI suggestions
+          |                |                  +-- resume tailoring
+          |                |                  +-- cover letters
+          |                |                  +-- interview questions
+          |                |                  +-- mock interview evaluation
+          |                |
+          |                +-- resume CRUD/versioning
+          |                +-- templates
+          |                +-- JD/requirements intake
+          |                +-- document parsing
+          |                +-- project selection
+          |                +-- DOCX fidelity/editing
+          |                +-- PDF import/export orchestration
+          |
+          +----------------------------------------------+
+                           |
+                           v
+                 Career Tracking Service
+                 +-- applications
+                 +-- resume version used
+                 +-- interview dates/status
+                 +-- notes/next actions
+
+Supporting components:
+- PostgreSQL
+- Private object storage
+- Isolated document conversion worker
+- External AI provider(s)
 ```
 
-## Primary User Journey
+## Why these boundaries
+
+### 1. API Gateway
+Responsibilities:
+- single public API entry point
+- routing
+- CORS policy
+- common request/correlation IDs
+- coarse rate limiting where appropriate
+- authentication-token propagation/verification pattern agreed with Identity Service
+
+The gateway must not become the business-logic layer.
+
+### 2. Identity Service
+Responsibilities:
+- registration
+- login/logout
+- token/session lifecycle
+- password reset
+- social login later if enabled
+- account/profile security
+- roles/permissions
+
+No other service stores passwords.
+
+### 3. Resume Service
+This is the main deterministic domain service and intentionally owns the document workflow to avoid premature fragmentation.
+
+Responsibilities:
+- user resume metadata
+- original resume upload references
+- immutable source document
+- resume versions
+- template catalog/selection
+- pasted/uploaded job description records
+- parsed resume structure
+- detected experience/projects
+- user-selected project scope
+- accepted/rejected AI change proposals
+- DOCX fidelity edits
+- PDF import orchestration
+- export jobs/status
+- user document library
+
+The service calls AI Career Service for AI inference but remains authoritative for what is persisted into a user's resume.
+
+### 4. AI Career Service
+Responsibilities:
+- JD/profile matching
+- ATS-oriented analysis
+- contextual field-level suggestions
+- bullet rewrite/improve/shorten/expand/quantify suggestions
+- job-specific tailoring proposals
+- skill-gap analysis
+- cover-letter generation
+- dynamic interview-question generation from JD + resume + projects + seniority + technologies
+- scenario/production/system-design question generation
+- mock-interview rubric evaluation and follow-up generation
+
+It returns proposals/results. It does not directly mutate Resume Service data.
+
+### 5. Career Tracking Service
+Responsibilities:
+- saved jobs/applications
+- company/role/job URL
+- application status
+- dates/interview schedule metadata
+- resume version used
+- cover-letter version used
+- notes
+- next actions
+
+Keep this separate because its lifecycle is distinct from resume document processing.
+
+---
+
+# Primary Product Journey
+
 ```text
-Paste/upload role responsibilities
-             |
-             v
-       Upload resume
-             |
-             v
- Parse document + detect sections/projects
-             |
-             v
- Ask user: latest 1 / latest 2 / latest N / choose projects
-             |
-             v
- Match target responsibilities to existing experience
-             |
-             v
- Generate proposed changes
-             |
-       +-----+------+
-       |            |
-       v            v
- Build Resume   Customize Resume
-       |            |
-       +-----+------+
-             v
-        Preview changes
-             |
-             v
-      Export DOCX / PDF
+Landing
+  ↓
+Register / Login
+  ↓
+Dashboard
+  ├── My Resumes
+  ├── Templates
+  ├── ATS Scores
+  ├── Cover Letters
+  ├── Interview Prep
+  └── Applications
+
+Optimize Existing Resume:
+Paste/upload job description
+  ↓
+Upload existing resume
+  ↓
+Parse document + detect sections/projects
+  ↓
+AI job/profile analysis + ATS-oriented score
+  ↓
+Select latest 1 / latest 2 / latest N / manual projects
+  ↓
+Generate structured change proposals
+  ↓
+Build Resume OR Customize Resume
+  ↓
+Field-level AI editor
+  ↓
+Review/Accept/Reject
+  ↓
+Final ATS analysis
+  ↓
+Preview
+  ↓
+Save version
+  ↓
+Download DOCX / PDF
+  ↓
+Cover Letter / Interview Prep / Application Tracking
 ```
 
-## Recommended Logical Modules
-### Identity
-Users, authentication, session/token lifecycle and access policy.
+---
 
-### Requirements Intake
-Accept pasted text and uploaded requirement documents. Normalize all sources into a single target-requirements model for downstream matching.
+# Resume Persistence and Versioning
 
-Supported initial requirement formats:
-- TXT
-- DOCX
-- PDF
+Every authenticated user owns a private resume library.
 
-### Document Upload
-Owns private upload lifecycle, content-type/size checks, object-storage references, malware scanning hook, upload status and source-file immutability.
+Store metadata for:
+- original uploaded resume
+- created-from-template resume
+- draft versions
+- tailored versions
+- final/exported versions
+- target job/JD associated with each tailored version
+- ATS analysis history
+- timestamps and version lineage
 
-### Resume Parsing
-Parses uploaded resume content into a structured internal representation while preserving a reference to the source document.
+The original upload is immutable.
 
-The parser should identify, with confidence metadata where possible:
-- personal/contact area
-- summary
+Every Build Resume/Apply Accepted Changes operation creates or updates a derived version. The system must make it possible to identify what changed from the source/previous version.
+
+Required user actions:
+- open
+- edit
+- rename
+- duplicate
+- tailor for another job
+- run ATS analysis
+- create cover letter
+- open interview prep
+- download DOCX/PDF
+- archive/delete according to retention policy
+
+---
+
+# Resume Templates
+
+Provide a broad first-party template catalog with Resumaire designs. Do not clone proprietary third-party templates pixel-for-pixel.
+
+Initial categories:
+- ATS Friendly
+- Modern
+- Professional
+- Executive
+- Simple
+- One-column
+- Two-column
+- Entry-level
+- Experienced
+- Creative where ATS/readability trade-offs are clearly communicated
+
+Templates must be represented as versioned rendering definitions rather than hard-coded page screenshots.
+
+---
+
+# Requirements Intake
+
+Accept:
+- pasted job description / roles & responsibilities
+- uploaded TXT
+- uploaded DOCX
+- uploaded PDF
+- optional job URL later when supported safely/reliably
+
+Normalize these into a target-job model consumed by ATS and AI Career Service.
+
+---
+
+# Resume Parsing
+
+Identify, with confidence metadata where possible:
+- contact/header
+- professional summary
 - skills
 - experience/project blocks
 - company/client/project names
-- job titles
+- titles
 - dates
 - responsibility bullets
-- education/certifications
+- achievements
+- education
+- certifications
+- custom sections
 
-### Project Selection
-Stores the user's explicit tailoring scope:
-- latest project
-- latest 2 projects
-- latest N projects
-- selected project IDs
+Low-confidence project boundaries require user confirmation before project-targeted tailoring.
 
-Low-confidence project detection must require user confirmation before document mutation.
+---
 
-### AI Tailoring
-Produces structured change proposals, not uncontrolled free-text mutation.
+# AI Change Proposal Contract
 
-Each proposal should identify:
-- source project
+AI returns structured proposals, not uncontrolled source-document writes.
+
+Each proposal identifies:
+- target resume version
+- section/project
 - source paragraph/bullet anchor
 - original text
 - proposed text
-- matched target responsibility/skill
+- reason
+- matched JD requirement/keyword
+- factual-support classification
 - confidence
-- whether user confirmation is required
+- whether explicit confirmation is required
 
-The AI module must not invent unsupported experience. Missing target responsibilities should be suggestions requiring explicit confirmation rather than automatic claims.
+Proposal classifications:
+- supported rewrite
+- supported keyword alignment
+- measurable-impact prompt
+- requires confirmation
+- unsupported / do not add
 
-### Resume Versioning
-The original upload is immutable. Every accepted/build operation produces a derived version with an audit trail of changes.
+Resume Service persists only user-approved/build-approved changes.
 
-### DOCX Fidelity Engine
-DOCX is the preferred editable source.
+---
 
-High-fidelity editing should preserve the original OOXML document package and modify only targeted paragraphs/runs/structures when possible rather than reconstructing the whole document from a generic template.
+# Field-Level AI
 
-Architectural preference when using a Java backend:
-- evaluate docx4j for OOXML-level manipulation
-- use Apache POI only where it provides sufficient fidelity for a specific operation
-- avoid flattening the document into plain text before rewriting
+Every meaningful editable resume field may expose contextual AI actions where useful:
+- Suggest
+- Improve
+- Rewrite
+- Shorten
+- Expand
+- Strengthen action verbs
+- Improve clarity
+- Quantify impact
+- Match JD
+- ATS keyword alignment
+- Fix grammar
 
-The engine must preserve as much as practical:
-- section/page settings
-- styles
-- fonts
-- numbering/bullets
+AI must return a visible proposal. It never silently overwrites user text.
+
+---
+
+# DOCX Fidelity Engine
+
+DOCX is the preferred high-fidelity editable source.
+
+Primary approach:
+- preserve the original OOXML package
+- edit targeted paragraphs/runs/structures where possible
+- avoid plain-text flatten-and-rebuild for high-fidelity mode
+
+Evaluate docx4j against a representative fidelity test suite containing:
 - tables
-- paragraph spacing
+- bullets/numbering
+- custom styles
 - headers/footers
-- ordering
+- multi-column layouts
+- page breaks
+- fonts
+- tab stops
+- text boxes/complex constructs where feasible
 
-Complex Word constructs (text boxes, SmartArt, embedded drawings, unusual fields) require explicit fidelity testing.
+If a construct cannot be preserved safely, surface the limitation rather than silently corrupting layout.
 
-### PDF Import
-PDF should be treated primarily as a read/import source, not as a guaranteed editable source format.
+---
 
-For PDF:
-- extract text/layout information using a PDF parser
+# PDF Import and Export
+
+PDF input is primarily a read/import path. Arbitrary PDF files are not guaranteed to be editable with exact layout preservation.
+
+For PDF import:
+- validate file
+- extract text/layout metadata
 - detect sections/projects
-- build an internal representation
-- produce a best-effort reconstructed document for editing/export
+- build canonical resume structure
+- use best-effort editable reconstruction
 
-Do not claim exact in-place PDF formatting preservation for arbitrary files.
+Recommend original DOCX when near-exact source-format preservation is required.
 
-If fidelity is critical, ask for the original DOCX.
+For PDF output:
+- render from the final approved DOCX/canonical document
+- isolate LibreOffice headless or chosen renderer in a controlled worker/container
+- do not run embedded macros/scripts
 
-### Export
-DOCX export:
-- generated from the versioned edited document package where the source is DOCX
+---
 
-PDF export:
-- render the final DOCX or canonical document representation to PDF through a controlled server-side renderer
+# ATS Architecture
 
-Evaluate LibreOffice headless or another deterministic office renderer for DOCX->PDF conversion in the deployment environment. Conversion workers should be isolated because office-document rendering expands the attack surface.
+Maintain two concepts separately:
 
-### ATS Analysis
-Use deterministic extraction/matching for measurable keyword/skill coverage where practical and AI for qualitative rewriting/suggestions. Do not present an invented universal ATS score as scientifically precise.
+1. **Job-Specific ATS Match Score**
+   - requires a target job/JD
+   - keyword/skill coverage
+   - role alignment
+   - section/readability checks
+   - supported experience mapping
 
-## Data Store
-Use one relational database for transactional product metadata. The binary source/generated documents live in private object storage rather than database BLOBs unless a later requirement justifies otherwise.
+2. **Generic Resume Quality Score**
+   - optional product feature
+   - no target job required
+   - completeness/readability/action-bullet/style checks
 
-## Object Storage
-Private storage only for resumes and generated files.
+Do not market either as guaranteed compatibility with every proprietary ATS.
 
-Recommended object categories:
+Use deterministic scoring components where measurable and AI for qualitative guidance. Keep scoring logic explainable and versioned.
+
+---
+
+# Interview Preparation Architecture
+
+Question generation inputs:
+- target JD
+- resume technologies
+- selected projects
+- candidate seniority/years of experience
+- role expectations
+- gaps from analysis
+
+Question categories:
+- important technical
+- scenario-based
+- project/resume-based
+- technology deep dive
+- production troubleshooting
+- system design
+- architecture/trade-offs
+- coding where relevant
+- behavioral
+
+Senior candidates must be weighted toward scenario, production, system-design and trade-off questions rather than definition-only questions.
+
+Store generated interview-prep sessions/results per user when the user chooses to save them.
+
+---
+
+# PostgreSQL Ownership
+
+Each microservice owns its data boundary.
+
+Initial practical deployment may use one PostgreSQL server/cluster with separate schemas/databases, but direct cross-service table access is prohibited.
+
+Use Flyway migrations per service.
+
+Suggested ownership:
+- identity schema/database → Identity Service
+- resume schema/database → Resume Service
+- ai-career schema/database → only persisted AI jobs/usage/prep records if needed
+- career-tracking schema/database → Career Tracking Service
+
+Binary documents must not be stored as ordinary PostgreSQL BLOBs unless a later measured requirement justifies it.
+
+---
+
+# Object Storage
+
+Private object categories:
 - `requirements-source/`
 - `resume-source/`
 - `resume-versions/`
 - `exports/`
+- `cover-letters/`
 
-Access via authenticated backend or short-lived signed URLs.
+Use authenticated backend access or short-lived signed URLs.
 
-## Security Boundary for Document Processing
-Uploaded Office/PDF files are untrusted input.
+Never use permanent public URLs for private resumes.
 
-Required controls:
-- extension + MIME validation
-- file-size limits
+---
+
+# Security
+
+Required:
+- server-side ownership checks on every user-owned resource
+- secure password hashing in Identity Service
+- short-lived access tokens/session policy with explicit refresh/revocation design
+- input validation
+- MIME + extension + size validation for uploads
 - malware scanning hook
-- reject macro-enabled formats in MVP unless explicitly supported
-- sandbox/isolate document conversion/rendering
-- do not execute embedded scripts/macros
-- random non-user-controlled storage keys
-- per-user authorization on all document operations
+- reject macro-enabled documents in MVP unless explicitly supported
+- isolated document conversion
+- no embedded macro/script execution
+- private object-storage keys
+- no passwords/tokens/private resume payloads in logs
+- rate/usage controls on costly AI operations
 
-## API
-Version paths under `/api/v1`. Web and later mobile clients share semantics.
+User A must never access User B's resume, version, export, ATS analysis, cover letter, interview-prep session or application record by changing an ID.
 
-## Authentication
-Exact mechanism remains an ARCH-001 decision. All source files, parsed structures, versions and exports require server-side ownership checks.
+---
 
-## AI Reliability
-- provider timeout
-- bounded retry only where safe
-- structured/schema-validated output
-- token/cost budgets
-- PII-aware logging
-- provider/model configured outside code
-- no direct AI writes to source files
-- deterministic post-validation before accepting proposal payloads
+# Observability
 
-## Observability
+All services:
 - structured logs
-- request/correlation IDs
-- document-processing job IDs
-- parser/render duration metrics
-- failure reason categories
-- AI latency/error/cost indicators
-- conversion queue depth if async processing is introduced
+- correlation/request ID propagation
+- Actuator health/readiness endpoints
+- latency/error metrics
+- dependency latency metrics
 
-## Deployment Baseline
-Initial components:
-- responsive web app
-- modular backend application
-- relational database
-- private object storage
-- isolated document-render/conversion capability
-- external AI provider
+Document flow:
+- document-processing job ID
+- parse duration
+- fidelity/render failures
+- conversion duration
 
-Do not introduce Kubernetes merely for MVP. Containerization is sufficient initially.
+AI flow:
+- provider/model identifier
+- latency
+- failure category
+- token/usage/cost telemetry without logging private resume content
 
-## Open Decisions for ARCH-001
-1. Backend language/framework and versions
-2. Relational database selection
-3. Authentication/session model
-4. Web frontend stack
-5. DOCX library selection after fidelity spike (docx4j vs alternatives)
-6. PDF text/layout extraction library
-7. DOCX-to-PDF rendering approach
-8. Object-storage provider
-9. AI provider abstraction and structured-output model
-10. Hosting/deployment target
-11. Maximum upload sizes and retention policy
-12. Whether document processing is synchronous for MVP or job-based after size/latency measurement
+---
+
+# Local Development
+
+Use Docker Compose to run integration dependencies/services.
+
+Expected local components:
+- api-gateway
+- identity-service
+- resume-service
+- ai-career-service
+- career-tracking-service
+- PostgreSQL
+- MinIO
+- document conversion worker
+- web app
+
+Flutter app may run from the developer machine/device/emulator against the local gateway.
+
+---
+
+# Build and Repository Rules
+
+Backend services:
+- Java 21
+- Maven
+- independent Spring Boot applications
+- dependency versions managed centrally where practical
+- one service may not import another service's internal persistence/domain implementation
+
+Web:
+- Next.js + React + TypeScript
+- shared design tokens/components
+- API calls through versioned contracts
+
+Mobile:
+- Flutter
+- shared contract semantics
+- mobile-specific UX rather than compressed desktop screens
+
+---
+
+# Decisions Still Open for ARCH-001
+
+The following remain deliberate architecture tasks, not developer guesses:
+1. Exact Spring Boot/Spring Cloud compatible versions to pin
+2. Auth implementation details: access/refresh/session/revocation and social login phase
+3. Inter-service authentication/authorization model
+4. Whether service communication is REST-only for MVP or any async job channel is justified after latency measurements
+5. AI provider(s), model policy and abstraction interface
+6. Exact PostgreSQL database-vs-schema isolation strategy
+7. Production object-storage provider
+8. Hosting/deployment target
+9. Upload-size limits and data-retention policy
+10. Document-processing sync vs async thresholds
+11. Exact DOCX fidelity library spike result
+12. Exact PDF rendering/conversion worker hardening
+13. Subscription/payment/usage-metering phase
+
+Do not allow Dev Agents to independently invent these decisions when they materially affect multiple services.
