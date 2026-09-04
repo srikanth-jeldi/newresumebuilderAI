@@ -14,6 +14,23 @@ Use **Razorpay as the primary India payment provider** for MVP/early production,
 - Avoids depending on Stripe for MVP because new Stripe accounts in India are currently invite-only.
 - Lets Resumaire launch with an India-friendly billing path while keeping business logic provider-neutral.
 
+## Supported User Payment Methods — India Web
+Resumaire web checkout should expose the broad set of methods available through the payment provider rather than integrating each method independently.
+
+Target methods:
+- UPI apps, including PhonePe, Google Pay, Paytm and other supported UPI apps
+- UPI ID / collect or intent flow where provider support applies
+- Credit cards
+- Debit cards
+- Netbanking
+- Supported wallets, including Paytm Wallet where the provider/account configuration permits it
+- UPI Autopay for recurring subscriptions where supported
+- Card/eMandate recurring methods where supported
+
+Payment-method availability may vary by provider account, bank, customer device, regulatory policy and transaction type. Therefore, Resumaire must render methods dynamically from provider capabilities/configuration rather than promising that every method is always available.
+
+Do not create separate direct integrations for PhonePe, Paytm, Google Pay and every bank during MVP. Use the provider-owned checkout/payment-method layer so one secure integration can expose multiple supported methods.
+
 ## Architecture
 
 ```text
@@ -64,6 +81,8 @@ Define an internal interface similar to:
 PaymentProvider
 - createCustomer(...)
 - createSubscription(...)
+- createOneTimeOrder(...)
+- fetchAvailablePaymentMethods(...)
 - cancelSubscription(...)
 - pauseSubscription(...)       # only if product policy uses it
 - resumeSubscription(...)      # only if product policy uses it
@@ -119,13 +138,15 @@ Backend creates provider subscription/order
 ↓
 Frontend opens provider-owned checkout
 ↓
+User chooses UPI / PhonePe / Google Pay / Paytm / card / netbanking / wallet as available
+↓
 Payment completes
 ↓
 Provider webhook reaches backend
 ↓
 Signature verified
 ↓
-Subscription updated ACTIVE
+Subscription/payment updated
 ↓
 Entitlement snapshot updated
 ↓
@@ -137,7 +158,7 @@ Do not grant paid access solely because the browser/mobile client says payment s
 ## Web Checkout
 For web MVP, use Razorpay's hosted/provider-owned checkout rather than building card/UPI forms ourselves.
 
-Resumaire should never collect/store raw card details.
+Resumaire should never collect/store raw card details, UPI credentials, CVV, bank credentials or wallet credentials.
 
 ## Mobile Billing Warning
 Android/iOS native apps may be subject to Google Play / Apple in-app purchase rules for digital subscriptions/features distributed through the stores.
@@ -209,6 +230,7 @@ Refund handling must update payment records and, when applicable, subscription/e
 - webhook signature verification mandatory
 - never log secrets or raw payment credentials
 - no raw card storage
+- no UPI PIN/CVV/bank credential collection by Resumaire
 - least-privilege API credentials
 - audit subscription state changes
 - require authenticated ownership for billing portal/subscription operations
@@ -217,7 +239,8 @@ Refund handling must update payment records and, when applicable, subscription/e
 MVP does not need:
 - a dedicated billing microservice
 - a paid subscription-management SaaS on top of Razorpay
-- a custom card-entry UI
+- custom card-entry UI
+- separate direct PhonePe/Paytm/GPay integrations
 - multi-provider routing
 
 Add complexity only when usage/revenue justifies it.
@@ -233,6 +256,7 @@ Do not migrate business logic to provider-specific terminology.
 ## Consequences
 ### Positive
 - practical India-first launch path
+- broad India payment-method coverage from one provider integration
 - low initial complexity
 - provider lock-in reduced
 - recurring billing supported
@@ -241,16 +265,18 @@ Do not migrate business logic to provider-specific terminology.
 
 ### Negative
 - provider abstraction adds some engineering work
+- exact visible payment methods depend on provider/account/regulatory support
 - mobile store billing requires a separate policy/implementation review
 - subscription webhook reconciliation must be implemented correctly
 
 ## Revisit Triggers
 Revisit when:
 - international customers become material
+- direct merchant relationships with PhonePe/Paytm become commercially useful
 - Stripe/another provider is needed for global billing
 - mobile subscriptions go live in app stores
 - billing complexity justifies a dedicated Billing Service
 - enterprise invoicing is introduced
 
 ## Final Decision
-**Razorpay primary for India web billing; provider-neutral entitlement architecture; Stripe/global provider later; native mobile billing decided separately under app-store rules.**
+**Razorpay primary for India web billing with UPI apps (PhonePe/Google Pay/Paytm as available), UPI, cards, netbanking and supported wallets through provider-owned checkout; provider-neutral entitlement architecture; global provider later; native mobile billing decided separately under app-store rules.**
