@@ -1,6 +1,6 @@
 services:
   n8n-postgres:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     container_name: resumaire-n8n-postgres
     restart: unless-stopped
     environment:
@@ -114,7 +114,7 @@ services:
       N8N_HOST: ${N8N_HOST}
       N8N_PORT: 5678
       N8N_PROTOCOL: ${N8N_PROTOCOL}
-      WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
       N8N_EDITOR_BASE_URL: ${N8N_EDITOR_BASE_URL}
       N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY}
       GENERIC_TIMEZONE: ${GENERIC_TIMEZONE}
@@ -124,10 +124,11 @@ services:
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_PERSONALIZATION_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "true"
-      N8N_RUNNERS_ENABLED: "true"
+      N8N_RUNNERS_TASK_TIMEOUT: "300"
 
       N8N_ENABLED_MODULES: instance-ai
       N8N_INSTANCE_AI_SANDBOX_ENABLED: "true"
+      N8N_INSTANCE_AI_SANDBOX_PROVIDER: n8n-sandbox
       N8N_INSTANCE_AI_SANDBOX_IMAGE: ghcr.io/n8n-io/n8n-sandbox-service-sandbox:latest
       N8N_SANDBOX_SERVICE_URL: http://sandbox-api:8080
       N8N_SANDBOX_SERVICE_API_KEY: ${N8N_SANDBOX_SERVICE_API_KEY}
