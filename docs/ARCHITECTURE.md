@@ -1,6 +1,6 @@
 # Resumaire — Architecture Baseline
 
-Status: TECHNOLOGY STACK LOCKED — service/API details still refined through ARCH-001.
+Status: TECHNOLOGY STACK + AUTH BASELINE LOCKED — remaining ARCH-001 decisions still in progress.
 
 Brand: **Resumaire — An EpitomeHub® Product**
 
@@ -8,7 +8,8 @@ Brand: **Resumaire — An EpitomeHub® Product**
 
 ### Backend
 - Java 21 LTS (Eclipse Temurin; development machine currently reports 21.0.6)
-- Spring Boot
+- Spring Boot **4.1.1**
+- Spring Cloud **2025.1.2 (Oakwood)**
 - Spring Security
 - Spring Data JPA / Hibernate
 - Spring Cloud Gateway
@@ -16,7 +17,12 @@ Brand: **Resumaire — An EpitomeHub® Product**
 - Jakarta Validation
 - Spring Boot Actuator
 
-Pin exact framework/library patch versions in dependency management and upgrade deliberately through reviewed PRs rather than floating versions.
+Why these versions:
+- Spring Boot 4.1.1 is the current stable 4.1 release line selected for the project.
+- Spring Cloud 2025.1.2 is the compatible Oakwood release train for Spring Boot 4.1.x.
+- Java 21 LTS is the project runtime baseline.
+
+All framework/library versions must be pinned through dependency management and upgraded only through reviewed pull requests.
 
 ### Database
 - PostgreSQL
@@ -121,7 +127,8 @@ Responsibilities:
 - CORS policy
 - common request/correlation IDs
 - coarse rate limiting where appropriate
-- authentication-token propagation/verification pattern agreed with Identity Service
+- validate bearer access tokens for protected routes
+- propagate authenticated identity/claims downstream without becoming the authorization authority for resource ownership
 
 The gateway must not become the business-logic layer.
 
@@ -129,11 +136,13 @@ The gateway must not become the business-logic layer.
 Responsibilities:
 - registration
 - login/logout
-- token/session lifecycle
+- access-token issuance
+- refresh-token lifecycle
 - password reset
 - social login later if enabled
 - account/profile security
 - roles/permissions
+- session/device revocation records
 
 No other service stores passwords.
 
@@ -185,6 +194,65 @@ Responsibilities:
 - next actions
 
 Keep this separate because its lifecycle is distinct from resume document processing.
+
+---
+
+# Authentication and Authorization Baseline
+
+## External client authentication
+Use a token-based model for MVP:
+- short-lived signed JWT access token
+- rotating opaque refresh token
+- refresh tokens stored hashed server-side in Identity Service
+- explicit logout/revocation support
+- refresh-token reuse detection where practical
+- browser and mobile clients use the same backend auth semantics
+
+Recommended initial token policy:
+- access token TTL: 15 minutes
+- refresh token TTL: 7 days
+- refresh token rotation on every successful refresh
+- logout revokes the active refresh-token family/session
+
+Exact TTLs are configurable and may be tuned later without changing the architecture.
+
+## Token contents
+Keep JWT claims minimal:
+- subject/user ID
+- role/authority claims required for coarse access control
+- issued-at/expiry
+- token/session identifier where useful
+
+Do not place resume content, email history, job descriptions or other private payloads inside JWTs.
+
+## Gateway responsibility
+Spring Cloud Gateway validates access-token signature, expiry and coarse route access.
+
+## Service responsibility
+Every business service independently enforces:
+- authenticated principal
+- resource ownership
+- role/permission rules
+- domain-specific authorization
+
+Gateway validation does not replace service-level authorization.
+
+Example mandatory rule:
+User A must never access User B's resume, resume version, ATS result, cover letter, interview-prep session or application record by changing an ID.
+
+## Service-to-service authentication
+For MVP internal REST calls:
+- services communicate over the private application network
+- propagate end-user identity only when the downstream operation requires user-context authorization
+- use a dedicated service credential/token for machine-to-machine calls where there is no end-user principal
+- downstream services still validate the caller and required scope/authority
+
+Do not treat network location alone as trust.
+
+A later move to workload identity/mTLS can be introduced when the deployment platform justifies it.
+
+## Social login
+Google/Apple/social login is not required for the first backend slice. Keep the Identity Service extensible for OAuth2/OIDC providers and add social providers as a separate reviewed feature.
 
 ---
 
@@ -497,7 +565,8 @@ Never use permanent public URLs for private resumes.
 Required:
 - server-side ownership checks on every user-owned resource
 - secure password hashing in Identity Service
-- short-lived access tokens/session policy with explicit refresh/revocation design
+- short-lived signed JWT access tokens
+- rotating hashed refresh tokens with revocation support
 - input validation
 - MIME + extension + size validation for uploads
 - malware scanning hook
@@ -558,6 +627,8 @@ Flutter app may run from the developer machine/device/emulator against the local
 
 Backend services:
 - Java 21
+- Spring Boot 4.1.1
+- Spring Cloud 2025.1.2 where Spring Cloud components are used
 - Maven
 - independent Spring Boot applications
 - dependency versions managed centrally where practical
@@ -578,18 +649,15 @@ Mobile:
 # Decisions Still Open for ARCH-001
 
 The following remain deliberate architecture tasks, not developer guesses:
-1. Exact Spring Boot/Spring Cloud compatible versions to pin
-2. Auth implementation details: access/refresh/session/revocation and social login phase
-3. Inter-service authentication/authorization model
-4. Whether service communication is REST-only for MVP or any async job channel is justified after latency measurements
-5. AI provider(s), model policy and abstraction interface
-6. Exact PostgreSQL database-vs-schema isolation strategy
-7. Production object-storage provider
-8. Hosting/deployment target
-9. Upload-size limits and data-retention policy
-10. Document-processing sync vs async thresholds
-11. Exact DOCX fidelity library spike result
-12. Exact PDF rendering/conversion worker hardening
-13. Subscription/payment/usage-metering phase
+1. Whether service communication is REST-only for MVP or any async job channel is justified after latency measurements
+2. AI provider(s), model policy and abstraction interface
+3. Exact PostgreSQL database-vs-schema isolation strategy
+4. Production object-storage provider
+5. Hosting/deployment target
+6. Upload-size limits and data-retention policy
+7. Document-processing sync vs async thresholds
+8. Exact DOCX fidelity library spike result
+9. Exact PDF rendering/conversion worker hardening
+10. Subscription/payment/usage-metering phase
 
 Do not allow Dev Agents to independently invent these decisions when they materially affect multiple services.
