@@ -17,6 +17,24 @@ services:
     networks:
       - n8n_net
 
+  searxng:
+    image: searxng/searxng:latest
+    container_name: resumaire-searxng
+    restart: unless-stopped
+    environment:
+      SEARXNG_BASE_URL: http://searxng:8080/
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - searxng_data:/var/cache/searxng
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:8080/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - n8n_net
+
   sandbox-certs:
     image: ghcr.io/n8n-io/n8n-sandbox-service-api:1.2.0
     container_name: resumaire-n8n-sandbox-certs
@@ -101,6 +119,8 @@ services:
         condition: service_healthy
       sandbox-api:
         condition: service_healthy
+      searxng:
+        condition: service_healthy
     ports:
       - "127.0.0.1:${N8N_PORT}:5678"
     environment:
@@ -124,7 +144,6 @@ services:
       N8N_DIAGNOSTICS_ENABLED: "false"
       N8N_PERSONALIZATION_ENABLED: "false"
       N8N_VERSION_NOTIFICATIONS_ENABLED: "true"
-      N8N_RUNNERS_TASK_TIMEOUT: "300"
 
       N8N_ENABLED_MODULES: instance-ai
       N8N_INSTANCE_AI_SANDBOX_ENABLED: "true"
@@ -150,6 +169,7 @@ volumes:
   n8n_data:
   n8n_postgres_data:
   sandbox_tls:
+  searxng_data:
 
 networks:
   n8n_net:
