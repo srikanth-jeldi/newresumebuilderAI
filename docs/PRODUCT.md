@@ -1,191 +1,313 @@
-# New Resume Builder AI — Product Definition
+# Resumaire — Product Definition
+
+Brand: **Resumaire — An EpitomeHub® Product**
 
 ## Product Goal
-Build a document-first AI resume tailoring platform that lets a user paste or upload target job roles/responsibilities, upload an existing resume, choose which projects should be tailored, preview changes, and download the result with minimal extra work.
+Resumaire is an authenticated AI career workspace, not only a one-time resume editor.
 
-The primary experience is not "create a resume from scratch". It is "take my existing resume, understand its structure, intelligently tailor selected project responsibilities, preserve my format as much as technically possible, and let me export Word/PDF".
+It should combine the familiar capabilities users expect from leading resume-builder products with Resumaire-specific AI features:
+- create resumes from scratch
+- upload and tailor existing resumes
+- preserve uploaded DOCX formatting where technically possible
+- offer many professional resume templates
+- provide field-level AI suggestions throughout resume creation
+- compute transparent ATS-oriented job-match scores
+- store original resumes and every generated/customized version for the logged-in user
+- generate cover letters
+- prepare the user for interviews with dynamic role/resume/technology-specific questions
+- run mock interviews
+- track job applications
+
+The strongest differentiator is the end-to-end flow from job description -> resume tailoring -> ATS analysis -> interview preparation -> application tracking while using only truthful/confirmed user experience.
 
 ## Primary Users
-- Experienced professionals tailoring an existing resume for a specific job description.
-- Job seekers who receive role/responsibility requirements and want to align their resume quickly.
-- Users maintaining multiple resume variants for different roles.
-- Users who need ATS-oriented guidance without manually reformatting their document.
+- Job seekers creating a first resume
+- Experienced professionals tailoring an existing resume for a specific job
+- Users maintaining different resume versions for different roles
+- Users who want ATS-oriented feedback
+- Users who want role-specific interview preparation from the same resume/JD context
 
-## Core Landing-Page Flow
-The first page should use a clean premium resume-builder layout inspired by modern resume-builder products, but with original branding, copy, assets and design tokens.
+## Authentication and User Workspace
+Users must be able to:
+- register
+- login
+- logout
+- recover/reset password
+- maintain a secure session
+- manage profile/account settings
 
-### Step 1 — Target Role / Responsibilities Input
-The landing page contains a large text area:
-- Label: `Paste role & responsibilities / job description`
-- User can paste plain text.
+After login, land on a personal dashboard.
 
-Beside/below it provide:
-- `Browse document` / drag-and-drop upload.
-- Initial supported requirement files: `.docx`, `.pdf`, `.txt`.
+The logged-in workspace stores only resources owned by that user.
 
-A user may either paste requirements, upload a requirements document, or use both.
+### My Resumes
+Show:
+- original uploaded resumes
+- resumes created from templates
+- tailored/modified versions
+- draft resumes
+- final/exported versions
 
-### Step 2 — Existing Resume Upload
-After requirements input is accepted, show the resume upload area prominently:
-- `Upload your resume`
-- Prefer `.docx` for high-fidelity editing.
-- Accept `.pdf` for parsing/import with explicit fidelity limitations.
+For each resume/version show useful metadata such as:
+- title
+- target role/company where applicable
+- source resume
+- template
+- latest ATS-oriented score where available
+- last modified date
+- status
 
-### Step 3 — Resume Understanding
-After resume upload, the system should:
-1. Parse the document.
-2. Detect major sections.
-3. Detect work-experience/project blocks where possible.
-4. Extract project/company/title/date/responsibility text.
-5. Compare current experience with target responsibilities.
-6. Never silently overwrite the source file.
+Actions should include where relevant:
+- open/edit
+- duplicate
+- rename
+- tailor for another job
+- run ATS analysis
+- create cover letter
+- prepare for interview
+- download DOCX/PDF
+- archive/delete
+- inspect version history
 
-### Step 4 — Ask Where to Apply Changes
-Before generating final changes, ask the user where the target responsibilities should be incorporated.
+Original uploaded source files remain immutable. Modified resumes are versioned derivatives.
 
-Required choices:
-- Latest project only
-- Latest 2 projects
-- Latest N projects
-- Select projects manually
+## Resume Templates
+Resumaire must provide a broad template gallery similar in breadth to established resume-builder products but with original Resumaire designs and assets.
 
-If project detection confidence is low, show extracted project blocks and ask the user to confirm them before editing.
+Template capabilities:
+- many professional designs
+- ATS-friendly options clearly identified
+- filters by style/role/experience level where useful
+- template preview
+- change template without losing resume content
+- colors/fonts/spacing controls where supported
+- responsive preview
+- DOCX/PDF export
 
-### Step 5 — Primary Actions
-Only after both requirements and resume are available, enable:
+Do not copy third-party proprietary templates pixel-for-pixel. Build original templates with comparable usability and quality.
 
-#### Build Resume
-Automatically creates a tailored draft for the selected projects while preserving truthful experience.
+## Core Product Flows
 
-The system should:
-- Map target responsibilities/skills to existing resume experience.
-- Rewrite/strengthen matching bullets.
-- Insert relevant missing wording only when it can be supported by existing experience or explicit user confirmation.
-- Avoid duplicate bullets across projects.
-- Preserve dates, companies, titles and factual project metadata unless the user explicitly edits them.
-- Show proposed changes before final save/export.
+### Flow A — Create New Resume
+1. Login/create account if required by product policy.
+2. Choose a template or start with a recommended template.
+3. Enter personal/contact information.
+4. Add professional summary.
+5. Add work experience/projects.
+6. Add education.
+7. Add skills.
+8. Add certifications/achievements/custom sections.
+9. Use contextual AI suggestions at meaningful text fields.
+10. Preview.
+11. Run ATS-oriented analysis if a job description is supplied.
+12. Save to My Resumes.
+13. Download DOCX/PDF.
 
-#### Customize Resume
-Open an interactive editor where the user can:
-- Review AI suggestions one by one.
-- Accept/reject/edit individual bullets.
-- Move a suggestion to a different selected project.
-- Edit sections manually.
-- Preview the resulting document.
+### Flow B — Optimize Existing Resume for a Job
+1. Paste/upload target job description or responsibilities.
+2. Upload existing resume.
+3. Parse resume and detect sections/projects.
+4. Analyze job vs resume.
+5. Show ATS-oriented match score, strengths, gaps and suggestions.
+6. Ask which projects/experience blocks should be tailored:
+   - latest project
+   - latest 2 projects
+   - latest N projects
+   - manual selection
+   - all projects
+7. Choose Build Resume or Customize Resume.
+8. Review AI proposals.
+9. Accept/reject/edit suggestions.
+10. Run final ATS-oriented analysis.
+11. Preview.
+12. Save as a new version in My Resumes.
+13. Download DOCX/PDF.
+14. Continue to Cover Letter / Interview Prep / Application Tracker.
 
-### Step 6 — Export
-Allow download as:
-- Word `.docx`
-- PDF `.pdf`
+## Field-Level AI Assistance
+Every meaningful editable text area should offer contextual AI actions where appropriate.
 
-The user should not need to copy content into another editor.
+Examples:
+- AI Suggest
+- Improve
+- Rewrite
+- Shorten
+- Expand
+- strengthen action verbs
+- improve clarity
+- fix grammar
+- quantify impact
+- match target job
+- ATS keyword alignment
 
-## Document-Fidelity Policy
+Target areas include:
+- professional headline
+- summary
+- work-experience bullets
+- project descriptions
+- achievements
+- skills descriptions
+- education descriptions where useful
+- certifications/custom sections
+- cover-letter fields
+
+AI must always produce visible proposals. It must not silently overwrite user text.
+
+## ATS-Oriented Analysis
+Resumaire should provide job-specific, explainable ATS-oriented scoring and guidance.
+
+Display where relevant:
+- overall match score
+- skills match
+- experience alignment
+- keyword coverage
+- section completeness
+- role/seniority alignment
+- formatting/readability warnings
+- strong areas
+- missing/weakly represented requirements
+- actionable suggestions
+
+Do not claim guaranteed acceptance by every proprietary ATS. Scoring must be positioned as Resumaire's transparent ATS-oriented analysis.
+
+Store ATS analysis history per resume version where useful so the user can compare improvement over time.
+
+## Document-First Tailoring
+For users with existing resumes, Resumaire should preserve the user's original format as much as technically possible.
+
 ### DOCX
-DOCX is the preferred editable source and high-fidelity path.
+Preferred editable source.
 
-Goal:
-- retain page setup
+High-fidelity goal:
+- page setup
 - fonts
 - paragraph styles
 - headings
 - tables
 - spacing
-- headers/footers where technically supported
-- existing section order
-- original visual structure as far as the document permits
+- headers/footers where supported
+- section order
+- overall visual structure
 
-The system should edit the source document structure rather than rebuilding it from a generic template when high-fidelity mode is possible.
+Prefer editing the existing OOXML structure rather than rebuilding from a generic template when fidelity mode is possible.
 
 ### PDF
-PDF is accepted for reading/import, but arbitrary PDFs cannot be guaranteed to support exact in-place editing while preserving the original layout.
+Accepted for reading/import, but exact in-place editable layout preservation cannot be guaranteed for arbitrary PDFs.
 
 For PDF uploads:
-- extract text and layout information when possible
+- extract text/layout where possible
 - detect sections/projects
-- offer a best-effort reconstructed editable resume
-- clearly identify when exact-format preservation is not technically possible
-- recommend uploading the original DOCX when the user needs near-exact format preservation
-
-Do not falsely promise pixel-perfect editable PDF preservation.
+- provide best-effort editable reconstruction
+- clearly flag fidelity limitations
+- recommend original DOCX for closest format preservation
 
 ## Experience-Integrity Rule
-The product must not automatically fabricate professional experience.
+Job-description requirements are not proof that a user performed those responsibilities.
 
-Target job-description responsibilities are requirements, not proof that the user performed those responsibilities.
-
-The system may:
+Resumaire may:
 - improve wording of existing work
 - map equivalent skills/activities
-- reorganize relevant truthful bullets
-- suggest missing responsibilities for user confirmation
+- reorganize truthful bullets
+- suggest missing responsibilities for explicit confirmation
 
-The system must not silently claim a technology, project responsibility, achievement or metric that is unsupported by the uploaded resume or explicit user confirmation.
+Resumaire must not silently fabricate:
+- technologies
+- employers
+- responsibilities
+- achievements
+- metrics
+- project experience
 
-## MVP Outcomes
-A user should be able to:
-1. Paste or upload target role/responsibility requirements.
-2. Upload an existing resume.
-3. Parse and preview detected resume sections/projects.
-4. Select latest one/two/N or manually selected projects for tailoring.
-5. Generate a tailored draft.
-6. Review before accepting changes.
-7. Customize individual suggestions.
-8. Export DOCX and PDF.
-9. Preserve original DOCX formatting as much as technically feasible.
-10. Receive ATS-oriented matching feedback.
+## Cover Letters
+Generate job-specific cover letters from the selected job and confirmed resume/profile data.
 
-## Secondary Resume-Creation Capabilities
-The architecture may later support:
-- create a resume from scratch
-- resume templates
-- reusable profile data
-- multiple resume variants
-- cover-letter generation
+Allow field-level AI editing and save cover-letter versions to the user's workspace.
 
-These are secondary to the document-first tailoring workflow for the initial product.
+## Interview Preparation
+Use the same job description + resume + selected projects + experience level to dynamically generate interview preparation.
 
-## AI Features
-MVP:
-- responsibility-to-experience matching
-- bullet rewriting
-- duplicate detection
-- skill/keyword matching
-- project-targeted suggestions
-- ATS-oriented analysis
-- structured change proposals
+Categories should include:
+- important technical questions
+- scenario-based questions
+- project/resume questions
+- technology-specific questions
+- production troubleshooting
+- system design
+- architecture/trade-offs
+- coding where relevant
+- behavioral questions
 
-AI output is always a draft until accepted by the user or applied through an explicit Build Resume confirmation step.
+For senior profiles, prioritize scenario, production, architecture and trade-off questions over basic definitions.
+
+Show why each question is relevant when useful.
+
+## Mock Interview
+AI should:
+1. ask a role-specific question
+2. evaluate the user's answer against a rubric
+3. identify strengths and missing points
+4. ask a contextual follow-up
+5. provide an improved answer framework without inventing fake experience
+
+## Application Tracker
+Authenticated users can track:
+- company
+- role
+- job link
+- date applied
+- status
+- resume version used
+- cover-letter version used
+- notes
+- next action/interview date
+
+Typical statuses:
+- Saved
+- Applied
+- Recruiter Contact
+- Interview
+- Offer
+- Rejected
+- Withdrawn
+
+## User Dashboard
+After login show a useful dashboard containing:
+- My Resumes
+- Recent resume versions
+- ATS scores/improvement
+- Cover Letters
+- Interview Prep sessions
+- Applications
+- quick actions: Create Resume / Optimize Resume / Paste Job
 
 ## Platforms
 Initial priority:
-- Responsive web application
+- responsive web application
 
-Later using the same backend contracts:
+Later, using the same backend contracts:
 - Android via Flutter
 - iOS via Flutter
 
 ## Product Principles
-- Existing resume format preservation is a first-class requirement.
-- User owns and controls resume content.
-- Original uploaded file remains immutable.
-- Generated revisions are versioned derivatives.
-- Private resume data must remain private.
-- AI must not silently fabricate experience.
-- Web/mobile share backend contracts.
+- Resumaire has its own brand/design; third-party sites are only product-pattern references.
+- User data is private and ownership-checked server-side.
+- Original uploaded resumes remain immutable.
+- Derived revisions are versioned and recoverable.
+- AI changes are visible and reversible.
+- AI must not fabricate professional experience.
 - Export quality is a core feature.
-
-## Out of Scope for Initial Architecture
-- Recruiter marketplace
-- Enterprise ATS product
-- Social-network features
-- Real-time multi-user collaboration
-- Premature microservice/Kubernetes complexity
+- Template variety is a core product capability, not an afterthought.
+- Login should unlock a persistent career workspace rather than a disposable session.
 
 ## Initial Success Criteria
-- End-to-end requirements upload/paste -> resume upload -> project selection -> tailored preview -> DOCX/PDF export works.
-- Source resume remains unchanged.
-- DOCX output retains the original document's important visual structure.
-- User can see exactly what AI changed.
-- Cross-user document access is blocked.
-- AI/provider errors never destroy uploaded or edited user work.
+- User can register/login and see a private dashboard.
+- User can create multiple resumes from original Resumaire templates.
+- User can upload an existing resume and tailor selected projects against a JD.
+- AI help is available throughout resume editing.
+- ATS-oriented score and actionable breakdown are available per relevant resume version.
+- Original and modified resume versions are stored and recoverable.
+- User can preview and export DOCX/PDF.
+- User can generate a cover letter from the same job context.
+- User can enter dynamic interview preparation and mock interview flows.
+- User can track job applications and associate them with a resume version.
+- Cross-user access to resumes/documents/analyses is blocked.
