@@ -1,0 +1,68 @@
+name: Agent Task
+description: Create a Resumaire agent-controlled engineering task
+title: "[TASK] "
+body:
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Owner Agent
+      options:
+        - Orchestrator
+        - Architect
+        - Backend/Web
+        - Mobile
+        - QA
+    validations:
+      required: true
+  - type: input
+    id: task_id
+    attributes:
+      label: Task ID
+      placeholder: DEV1-002
+    validations:
+      required: true
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: What measurable result must this task produce?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Exact modules/screens/services included.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Task IDs/contracts/PRs that must be ready first.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Numbered, testable criteria.
+    validations:
+      required: true
+  - type: textarea
+    id: prohibited
+    attributes:
+      label: Do Not Change
+      description: Explicit boundaries for the agent.
+  - type: textarea
+    id: validation
+    attributes:
+      label: Required Validation
+      description: Builds, tests, security checks, QA checks.
+    validations:
+      required: true
+  - type: checkboxes
+    id: human_gate
+    attributes:
+      label: Human Gate
+      options:
+        - label: Production merge/deploy requires human approval
+          required: true
